@@ -38,6 +38,7 @@
 #include <usb_cam/usb_cam.h>
 #include <image_transport/image_transport.h>
 #include <camera_info_manager/camera_info_manager.h>
+#include <sensor_msgs/image_encodings.h>
 #include <sstream>
 #include <std_srvs/Empty.h>
 
@@ -51,6 +52,7 @@ public:
 
   // shared image message
   sensor_msgs::Image img_;
+  sensor_msgs::Image img_pad_;
   image_transport::CameraPublisher image_pub_;
 
   // parameters
@@ -61,6 +63,8 @@ public:
       white_balance_, gain_;
   bool autofocus_, autoexposure_, auto_white_balance_;
   boost::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_;
+
+  int padding_top_, padding_right_, padding_bottom_, padding_left_;
 
   UsbCam cam_;
 
@@ -111,6 +115,11 @@ public:
     // enable/disable auto white balance temperature
     node_.param("auto_white_balance", auto_white_balance_, true);
     node_.param("white_balance", white_balance_, 4000);
+
+    node_.param("padding_left", padding_left_, 0);
+    node_.param("padding_top", padding_top_, 0);
+    node_.param("padding_right", padding_right_, 0);
+    node_.param("padding_bottom", padding_bottom_, 0);
 
     // load the camera info
     node_.param("camera_frame_id", img_.header.frame_id, std::string("head_camera"));
@@ -228,16 +237,54 @@ public:
 
   bool take_and_send_image()
   {
+    sensor_msgs::Image *img_ptr(&img_);
     // grab the image
     cam_.grab_image(&img_);
 
     // grab the camera info
     sensor_msgs::CameraInfoPtr ci(new sensor_msgs::CameraInfo(cinfo_->getCameraInfo()));
-    ci->header.frame_id = img_.header.frame_id;
-    ci->header.stamp = img_.header.stamp;
+    ci->header.frame_id = img_ptr->header.frame_id;
+    ci->header.stamp = img_ptr->header.stamp;
+
+    if (padding_left_ != 0 || padding_top_ != 0 ||
+        padding_right_ != 0 || padding_bottom_ != 0)
+    {
+      const int ch = sensor_msgs::image_encodings::numChannels(img_.encoding);
+
+      img_ptr = &img_pad_;
+      img_pad_.header = img_.header;
+      img_pad_.encoding = img_.encoding;
+      img_pad_.is_bigendian = img_.is_bigendian;
+      img_pad_.height = img_.height + padding_top_ + padding_bottom_;
+      img_pad_.width = img_.width + padding_left_ + padding_right_;
+      img_pad_.step = img_pad_.width * ch;
+      img_pad_.data.resize(img_pad_.height * img_pad_.step);
+
+      uint8_t *pixel_ptr(img_.data.data());
+      uint8_t *pixel_ptr_pad(img_pad_.data.data() + padding_top_ * img_pad_.step);
+      for (size_t i = 0; i < img_.height; ++i)
+      {
+        memcpy(pixel_ptr_pad + padding_left_ * ch, pixel_ptr, img_.width * ch);
+        pixel_ptr += img_.step;
+        pixel_ptr_pad += img_pad_.step;
+      }
+
+      ci->height += padding_top_ + padding_bottom_;
+      ci->width += padding_left_ + padding_right_;
+      ci->K[2] += padding_left_;
+      ci->K[3 + 2] += padding_top_;
+      ci->P[2] += padding_left_;
+      ci->P[4 + 2] += padding_top_;
+
+      if (ci->roi.width != 0 && ci->roi.height != 0)
+      {
+        ci->roi.x_offset += padding_left_;
+        ci->roi.y_offset += padding_top_;
+      }
+    }
 
     // publish the image
-    image_pub_.publish(img_, *ci);
+    image_pub_.publish(*img_ptr, *ci);
 
     return true;
   }
