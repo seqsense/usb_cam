@@ -65,6 +65,7 @@ public:
   boost::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_;
 
   int padding_top_, padding_right_, padding_bottom_, padding_left_;
+  int drop_, drop_per_, cnt_;
 
   UsbCam cam_;
 
@@ -120,6 +121,9 @@ public:
     node_.param("padding_top", padding_top_, 0);
     node_.param("padding_right", padding_right_, 0);
     node_.param("padding_bottom", padding_bottom_, 0);
+
+    node_.param("drop", drop_, 0);
+    node_.param("drop_per", drop_per_, 1);
 
     // load the camera info
     node_.param("camera_frame_id", img_.header.frame_id, std::string("head_camera"));
@@ -239,6 +243,12 @@ public:
     sensor_msgs::Image *img_ptr(&img_);
     // grab the image
     cam_.grab_image(&img_);
+
+    ++cnt_;
+    if (cnt_ % drop_per_ < drop_)
+    {
+      return true;
+    }
 
     // grab the camera info
     sensor_msgs::CameraInfoPtr ci(new sensor_msgs::CameraInfo(cinfo_->getCameraInfo()));
