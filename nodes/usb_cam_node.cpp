@@ -65,7 +65,8 @@ public:
   boost::shared_ptr<camera_info_manager::CameraInfoManager> cinfo_;
 
   int padding_top_, padding_right_, padding_bottom_, padding_left_;
-  int drop_, drop_per_, cnt_;
+  int drop_, drop_per_;
+  size_t drop_cnt_;
 
   UsbCam cam_;
 
@@ -86,8 +87,9 @@ public:
     return true;
   }
 
-  UsbCamNode() :
-      node_("~")
+  UsbCamNode()
+    : node_("~")
+    , drop_cnt_(0)
   {
     // advertise the main image topic
     image_transport::ImageTransport it(node_);
@@ -244,8 +246,8 @@ public:
     // grab the image
     cam_.grab_image(&img_);
 
-    ++cnt_;
-    if (cnt_ % drop_per_ < drop_)
+    ++drop_cnt_;
+    if (drop_cnt_ % drop_per_ < drop_)
     {
       return true;
     }
