@@ -152,7 +152,7 @@ public:
     service_start_ = node_.advertiseService("start_capture", &UsbCamNode::service_start_cap, this);
     service_stop_ = node_.advertiseService("stop_capture", &UsbCamNode::service_stop_cap, this);
 
-    // subscribe
+    // subscribe exposure control topics
     sub_exposure_auto_ = node_.subscribe("exposure_auto", 1, &UsbCamNode::exposureAutoCallback, this);
     sub_exposure_absolute_ = node_.subscribe("exposure_absolute", 1, &UsbCamNode::exposureAbsoluteCallback, this);
 
