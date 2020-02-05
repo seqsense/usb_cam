@@ -40,6 +40,8 @@
 #include <camera_info_manager/camera_info_manager.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sstream>
+#include <std_msgs/Int32.h>
+#include <std_msgs/Bool.h>
 #include <std_srvs/Empty.h>
 
 namespace usb_cam {
@@ -72,6 +74,8 @@ public:
 
   ros::ServiceServer service_start_, service_stop_;
 
+  ros::Subscriber sub_exposure_auto_;
+  ros::Subscriber sub_exposure_absolute_;
 
 
   bool service_start_cap(std_srvs::Empty::Request  &req, std_srvs::Empty::Response &res )
@@ -85,6 +89,17 @@ public:
   {
     cam_.stop_capturing();
     return true;
+  }
+
+  void exposureAutoCallback(const std_msgs::Bool& msg)
+  {
+    const int exposure_auto = msg.data ? 0 : 1;
+    cam_.set_v4l_parameter("exposure_auto", exposure_auto);
+  }
+
+  void exposureAbsoluteCallback(const std_msgs::Int32& msg)
+  {
+    cam_.set_v4l_parameter("exposure_absolute", msg.data);
   }
 
   UsbCamNode()
@@ -136,6 +151,10 @@ public:
     // create Services
     service_start_ = node_.advertiseService("start_capture", &UsbCamNode::service_start_cap, this);
     service_stop_ = node_.advertiseService("stop_capture", &UsbCamNode::service_stop_cap, this);
+
+    // subscribe
+    sub_exposure_auto_ = node_.subscribe("exposure_auto", 1, &UsbCamNode::exposureAutoCallback, this);
+    sub_exposure_absolute_ = node_.subscribe("exposure_absolute", 1, &UsbCamNode::exposureAbsoluteCallback, this);
 
     // check for default camera info
     if (!cinfo_->isCalibrated())

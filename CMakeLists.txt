@@ -11,6 +11,7 @@ find_package(catkin REQUIRED
     camera_info_manager
     image_transport
     sensor_msgs
+    std_msgs
     std_srvs
 )
 
