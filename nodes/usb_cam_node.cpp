@@ -40,8 +40,8 @@
 #include <camera_info_manager/camera_info_manager.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sstream>
-#include <std_msgs/Int32.h>
 #include <std_msgs/Bool.h>
+#include <std_msgs/Int32.h>
 #include <std_srvs/Empty.h>
 
 namespace usb_cam {
