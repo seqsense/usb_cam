@@ -41,6 +41,8 @@
 #include <sensor_msgs/image_encodings.h>
 #include <sstream>
 #include <std_srvs/Empty.h>
+#include <dynamic_reconfigure/server.h>
+#include <usb_cam/ExposureConfig.h>
 
 namespace usb_cam {
 
@@ -72,6 +74,7 @@ public:
 
   ros::ServiceServer service_start_, service_stop_;
 
+  dynamic_reconfigure::Server<usb_cam::ExposureConfig> exposure_server;
 
 
   bool service_start_cap(std_srvs::Empty::Request  &req, std_srvs::Empty::Response &res )
@@ -90,6 +93,7 @@ public:
   UsbCamNode()
     : node_("~")
     , drop_cnt_(0)
+    , exposure_server(node_)
   {
     // advertise the main image topic
     image_transport::ImageTransport it(node_);
@@ -136,6 +140,9 @@ public:
     // create Services
     service_start_ = node_.advertiseService("start_capture", &UsbCamNode::service_start_cap, this);
     service_stop_ = node_.advertiseService("stop_capture", &UsbCamNode::service_stop_cap, this);
+
+    // setup dynamic_reconfigure server
+    exposure_server.setCallback(boost::bind(&UsbCamNode::exposureCallback, this, _1, _2));
 
     // check for default camera info
     if (!cinfo_->isCalibrated())
@@ -298,6 +305,12 @@ public:
     image_pub_.publish(*img_ptr, *ci);
 
     return true;
+  }
+
+  void exposureCallback(usb_cam::ExposureConfig &config, uint32_t level) {
+    ROS_INFO("Reconfigure Request: %d %s", 
+              config.exposure_absolute,  
+              config.exposure_auto?"True":"False");
   }
 
   bool spin()
