@@ -308,9 +308,8 @@ public:
   }
 
   void exposureCallback(usb_cam::ExposureConfig &config, uint32_t level) {
-    ROS_INFO("Reconfigure Request: %d %s", 
-              config.exposure_absolute,  
-              config.exposure_auto?"True":"False");
+    cam_.set_v4l_parameter("exposure_auto", config.exposure_auto ? 0 : 1);
+    cam_.set_v4l_parameter("exposure_absolute", config.exposure_absolute);
   }
 
   bool spin()
