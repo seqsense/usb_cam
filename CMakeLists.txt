@@ -10,6 +10,7 @@ find_package(catkin REQUIRED
 
     camera_info_manager
     image_transport
+    message_generation
     sensor_msgs
     std_msgs
     std_srvs
@@ -19,6 +20,11 @@ find_package(catkin REQUIRED
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(avcodec libavcodec REQUIRED)
 pkg_check_modules(swscale libswscale REQUIRED)
+
+add_service_files(
+  FILES
+  ExposureAuto.srv
+)
 
 ###################################################
 ## Declare things to be passed to other projects ##
