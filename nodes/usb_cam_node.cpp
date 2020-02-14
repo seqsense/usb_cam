@@ -74,7 +74,7 @@ public:
 
   ros::ServiceServer service_start_, service_stop_;
 
-  dynamic_reconfigure::Server<usb_cam::ExposureConfig> exposure_server;
+  dynamic_reconfigure::Server<usb_cam::ExposureConfig> exposure_server_;
 
 
   bool service_start_cap(std_srvs::Empty::Request  &req, std_srvs::Empty::Response &res )
@@ -93,7 +93,7 @@ public:
   UsbCamNode()
     : node_("~")
     , drop_cnt_(0)
-    , exposure_server(node_)
+    , exposure_server_(node_)
   {
     // advertise the main image topic
     image_transport::ImageTransport it(node_);
@@ -142,7 +142,7 @@ public:
     service_stop_ = node_.advertiseService("stop_capture", &UsbCamNode::service_stop_cap, this);
 
     // setup dynamic_reconfigure server
-    exposure_server.setCallback(boost::bind(&UsbCamNode::exposureCallback, this, _1, _2));
+    exposure_server_.setCallback(boost::bind(&UsbCamNode::exposureCallback, this, _1, _2));
 
     // check for default camera info
     if (!cinfo_->isCalibrated())
