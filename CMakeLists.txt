@@ -26,6 +26,11 @@ add_service_files(
   ExposureAuto.srv
 )
 
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 ###################################################
 ## Declare things to be passed to other projects ##
 ###################################################

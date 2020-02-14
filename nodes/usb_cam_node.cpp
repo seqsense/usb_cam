@@ -36,11 +36,11 @@
 
 #include <ros/ros.h>
 #include <usb_cam/usb_cam.h>
+#include <usb_cam/ExposureAuto.h>
 #include <image_transport/image_transport.h>
 #include <camera_info_manager/camera_info_manager.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sstream>
-#include <std_msgs/Bool.h>
 #include <std_msgs/Int32.h>
 #include <std_srvs/Empty.h>
 
@@ -73,8 +73,7 @@ public:
   UsbCam cam_;
 
   ros::ServiceServer service_start_, service_stop_;
-
-  ros::Subscriber sub_exposure_auto_;
+  ros::ServiceServer service_exposure_auto_;
   ros::Subscriber sub_exposure_absolute_;
 
 
@@ -91,10 +90,13 @@ public:
     return true;
   }
 
-  void exposureAutoCallback(const std_msgs::Bool& msg)
+  bool serviceExposureAuto(usb_cam::ExposureAuto::Request  &req,
+                           usb_cam::ExposureAuto::Response &res)
   {
-    const int exposure_auto = msg.data ? 0 : 1;
+    const int exposure_auto = req.enable ? 0 : 1;
     cam_.set_v4l_parameter("exposure_auto", exposure_auto);
+    res.success = true;
+    return true;
   }
 
   void exposureAbsoluteCallback(const std_msgs::Int32& msg)
@@ -152,8 +154,8 @@ public:
     service_start_ = node_.advertiseService("start_capture", &UsbCamNode::service_start_cap, this);
     service_stop_ = node_.advertiseService("stop_capture", &UsbCamNode::service_stop_cap, this);
 
-    // subscribe exposure control topics
-    sub_exposure_auto_ = node_.subscribe("exposure_auto", 1, &UsbCamNode::exposureAutoCallback, this);
+    // exposure controls
+    service_exposure_auto_ = node_.advertiseService("exposure_auto", &UsbCamNode::serviceExposureAuto, this);
     sub_exposure_absolute_ = node_.subscribe("exposure_absolute", 1, &UsbCamNode::exposureAbsoluteCallback, this);
 
     // check for default camera info
