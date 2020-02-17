@@ -36,13 +36,13 @@
 
 #include <ros/ros.h>
 #include <usb_cam/usb_cam.h>
-#include <usb_cam/ExposureAuto.h>
 #include <image_transport/image_transport.h>
 #include <camera_info_manager/camera_info_manager.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sstream>
 #include <std_msgs/Int32.h>
 #include <std_srvs/Empty.h>
+#include <std_srvs/SetBool.h>
 
 namespace usb_cam {
 
@@ -90,10 +90,10 @@ public:
     return true;
   }
 
-  bool serviceExposureAuto(usb_cam::ExposureAuto::Request  &req,
-                           usb_cam::ExposureAuto::Response &res)
+  bool serviceExposureAuto(std_srvs::SetBool::Request  &req,
+                           std_srvs::SetBool::Response &res)
   {
-    const int exposure_auto = req.enable ? 0 : 1;
+    const int exposure_auto = req.data ? 0 : 1;
     cam_.set_v4l_parameter("exposure_auto", exposure_auto);
     res.success = true;
     return true;

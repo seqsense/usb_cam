@@ -25,7 +25,4 @@
   <depend>std_msgs</depend>
   <depend>std_srvs</depend>
   <exec_depend>v4l-utils</exec_depend>
-  
-  <build_depend>message_generation</build_depend>
-  <exec_depend>message_runtime</exec_depend>
 </package>
