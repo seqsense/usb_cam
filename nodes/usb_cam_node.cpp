@@ -40,7 +40,7 @@
 #include <camera_info_manager/camera_info_manager.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sstream>
-#include <std_msgs/Int32.h>
+#include <std_msgs/Duration.h>
 #include <std_srvs/Empty.h>
 #include <std_srvs/SetBool.h>
 
@@ -99,9 +99,10 @@ public:
     return true;
   }
 
-  void exposureAbsoluteCallback(const std_msgs::Int32& msg)
+  void exposureAbsoluteCallback(const std_msgs::Duration& msg)
   {
-    cam_.set_v4l_parameter("exposure_absolute", msg.data);
+    const int exposure_absolute = msg.data.toSec() * 10000;
+    cam_.set_v4l_parameter("exposure_absolute", exposure_absolute);
   }
 
   UsbCamNode()
