@@ -9,6 +9,7 @@ find_package(catkin REQUIRED
     roscpp
 
     camera_info_manager
+    dynamic_reconfigure
     image_transport
     sensor_msgs
     std_msgs
@@ -19,6 +20,8 @@ find_package(catkin REQUIRED
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(avcodec libavcodec REQUIRED)
 pkg_check_modules(swscale libswscale REQUIRED)
+
+generate_dynamic_reconfigure_options(cfg/CameraParameter.cfg)
 
 ###################################################
 ## Declare things to be passed to other projects ##
@@ -58,6 +61,8 @@ target_link_libraries(${PROJECT_NAME}_node
   ${swscale_LIBRARIES}
   ${catkin_LIBRARIES}
 )
+
+add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_gencfg)
 
 #############
 ## Install ##
