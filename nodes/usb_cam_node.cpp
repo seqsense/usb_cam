@@ -99,6 +99,8 @@ public:
 
   void exposureAbsoluteCallback(const std_msgs::Duration& msg)
   {
+    // V4L2_CID_EXPOSURE_ABSOLUTE is in 100 microseconds units.
+    // https://linuxtv.org/downloads/v4l-dvb-apis/uapi/v4l/ext-ctrls-camera.html
     const int exposure_absolute = msg.data.toSec() * 10000;
     cam_.set_v4l_parameter("exposure_absolute", exposure_absolute);
   }
