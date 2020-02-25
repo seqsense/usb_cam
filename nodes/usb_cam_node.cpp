@@ -36,10 +36,13 @@
 
 #include <ros/ros.h>
 #include <usb_cam/usb_cam.h>
+#include <usb_cam/CameraParameterConfig.h>
 #include <image_transport/image_transport.h>
 #include <camera_info_manager/camera_info_manager.h>
+#include <dynamic_reconfigure/server.h>
 #include <sensor_msgs/image_encodings.h>
 #include <sstream>
+#include <std_msgs/Duration.h>
 #include <std_srvs/Empty.h>
 
 namespace usb_cam {
@@ -71,7 +74,8 @@ public:
   UsbCam cam_;
 
   ros::ServiceServer service_start_, service_stop_;
-
+  dynamic_reconfigure::Server<usb_cam::CameraParameterConfig> camera_parameter_server_;
+  ros::Subscriber sub_exposure_absolute_;
 
 
   bool service_start_cap(std_srvs::Empty::Request  &req, std_srvs::Empty::Response &res )
@@ -87,9 +91,24 @@ public:
     return true;
   }
 
+  void cameraParameterServerCallback(usb_cam::CameraParameterConfig &config, uint32_t level)
+  {
+    const int exposure_auto = config.exposure_auto ? 0 : 1;
+    cam_.set_v4l_parameter("exposure_auto", exposure_auto);
+  }
+
+  void exposureAbsoluteCallback(const std_msgs::Duration& msg)
+  {
+    // V4L2_CID_EXPOSURE_ABSOLUTE is in 100 microseconds units.
+    // https://linuxtv.org/downloads/v4l-dvb-apis/uapi/v4l/ext-ctrls-camera.html
+    const int exposure_absolute = msg.data.toSec() * 10000;
+    cam_.set_v4l_parameter("exposure_absolute", exposure_absolute);
+  }
+
   UsbCamNode()
     : node_("~")
     , drop_cnt_(0)
+    , camera_parameter_server_(node_)
   {
     // advertise the main image topic
     image_transport::ImageTransport it(node_);
@@ -136,6 +155,10 @@ public:
     // create Services
     service_start_ = node_.advertiseService("start_capture", &UsbCamNode::service_start_cap, this);
     service_stop_ = node_.advertiseService("stop_capture", &UsbCamNode::service_stop_cap, this);
+
+    // camera parameter controls
+    camera_parameter_server_.setCallback(boost::bind(&UsbCamNode::cameraParameterServerCallback, this, _1, _2));
+    sub_exposure_absolute_ = node_.subscribe("exposure_absolute", 1, &UsbCamNode::exposureAbsoluteCallback, this);
 
     // check for default camera info
     if (!cinfo_->isCalibrated())
