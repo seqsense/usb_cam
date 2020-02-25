@@ -43,6 +43,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <sstream>
 #include <std_msgs/Duration.h>
+#include <std_msgs/Int32.h>
 #include <std_srvs/Empty.h>
 
 namespace usb_cam {
@@ -75,7 +76,7 @@ public:
 
   ros::ServiceServer service_start_, service_stop_;
   dynamic_reconfigure::Server<usb_cam::CameraParameterConfig> camera_parameter_server_;
-  ros::Subscriber sub_exposure_absolute_;
+  ros::Subscriber sub_exposure_absolute_, sub_gamma_;
 
 
   bool service_start_cap(std_srvs::Empty::Request  &req, std_srvs::Empty::Response &res )
@@ -103,6 +104,11 @@ public:
     // https://linuxtv.org/downloads/v4l-dvb-apis/uapi/v4l/ext-ctrls-camera.html
     const int exposure_absolute = msg.data.toSec() * 10000;
     cam_.set_v4l_parameter("exposure_absolute", exposure_absolute);
+  }
+
+  void gammaCallback(const std_msgs::Int32& msg)
+  {
+    cam_.set_v4l_parameter("gamma", msg.data);
   }
 
   UsbCamNode()
@@ -159,6 +165,7 @@ public:
     // camera parameter controls
     camera_parameter_server_.setCallback(boost::bind(&UsbCamNode::cameraParameterServerCallback, this, _1, _2));
     sub_exposure_absolute_ = node_.subscribe("exposure_absolute", 1, &UsbCamNode::exposureAbsoluteCallback, this);
+    sub_gamma_ = node_.subscribe("gamma", 1, &UsbCamNode::gammaCallback, this);
 
     // check for default camera info
     if (!cinfo_->isCalibrated())
