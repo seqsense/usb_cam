@@ -43,7 +43,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <sstream>
 #include <std_msgs/Duration.h>
-#include <std_msgs/Int32.h>
+#include <std_msgs/Float32.h>
 #include <std_srvs/Empty.h>
 
 namespace usb_cam {
@@ -71,6 +71,8 @@ public:
   int padding_top_, padding_right_, padding_bottom_, padding_left_;
   int drop_, drop_per_;
   size_t drop_cnt_;
+
+  int gamma_default_, gamma_max_, gamma_min_;
 
   UsbCam cam_;
 
@@ -106,9 +108,13 @@ public:
     cam_.set_v4l_parameter("exposure_absolute", exposure_absolute);
   }
 
-  void gammaCallback(const std_msgs::Int32& msg)
+  void gammaCallback(const std_msgs::Float32& msg)
   {
-    cam_.set_v4l_parameter("gamma", msg.data);
+    // Convert real gamma value to device gamma value
+    int gamma = msg.data * gamma_default_;
+    if(gamma > gamma_max_) gamma = gamma_max_;
+    if(gamma < gamma_min_) gamma = gamma_min_;
+    cam_.set_v4l_parameter("gamma", gamma);
   }
 
   UsbCamNode()
@@ -151,6 +157,10 @@ public:
 
     node_.param("drop", drop_, 0);
     node_.param("drop_per", drop_per_, 1);
+
+    node_.param("gamma_default", gamma_default_, 100);
+    node_.param("gamma_max", gamma_max_, 200);
+    node_.param("gamma_min", gamma_min_, 50);
 
     // load the camera info
     node_.param("camera_frame_id", img_.header.frame_id, std::string("head_camera"));
