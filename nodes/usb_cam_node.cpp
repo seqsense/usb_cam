@@ -43,6 +43,7 @@
 #include <sensor_msgs/image_encodings.h>
 #include <sstream>
 #include <std_msgs/Duration.h>
+#include <std_msgs/Float32.h>
 #include <std_srvs/Empty.h>
 
 namespace usb_cam {
@@ -71,11 +72,13 @@ public:
   int drop_, drop_per_;
   size_t drop_cnt_;
 
+  int gamma_default_, gamma_max_, gamma_min_;
+
   UsbCam cam_;
 
   ros::ServiceServer service_start_, service_stop_;
   dynamic_reconfigure::Server<usb_cam::CameraParameterConfig> camera_parameter_server_;
-  ros::Subscriber sub_exposure_absolute_;
+  ros::Subscriber sub_exposure_absolute_, sub_gamma_;
 
 
   bool service_start_cap(std_srvs::Empty::Request  &req, std_srvs::Empty::Response &res )
@@ -103,6 +106,15 @@ public:
     // https://linuxtv.org/downloads/v4l-dvb-apis/uapi/v4l/ext-ctrls-camera.html
     const int exposure_absolute = msg.data.toSec() * 10000;
     cam_.set_v4l_parameter("exposure_absolute", exposure_absolute);
+  }
+
+  void gammaCallback(const std_msgs::Float32& msg)
+  {
+    // Convert real gamma value to device gamma value
+    int gamma = msg.data * gamma_default_;
+    if(gamma > gamma_max_) gamma = gamma_max_;
+    if(gamma < gamma_min_) gamma = gamma_min_;
+    cam_.set_v4l_parameter("gamma", gamma);
   }
 
   UsbCamNode()
@@ -146,6 +158,10 @@ public:
     node_.param("drop", drop_, 0);
     node_.param("drop_per", drop_per_, 1);
 
+    node_.param("gamma_default", gamma_default_, 100);
+    node_.param("gamma_max", gamma_max_, 200);
+    node_.param("gamma_min", gamma_min_, 50);
+
     // load the camera info
     node_.param("camera_frame_id", img_.header.frame_id, std::string("head_camera"));
     node_.param("camera_name", camera_name_, std::string("head_camera"));
@@ -159,6 +175,7 @@ public:
     // camera parameter controls
     camera_parameter_server_.setCallback(boost::bind(&UsbCamNode::cameraParameterServerCallback, this, _1, _2));
     sub_exposure_absolute_ = node_.subscribe("exposure_absolute", 1, &UsbCamNode::exposureAbsoluteCallback, this);
+    sub_gamma_ = node_.subscribe("gamma", 1, &UsbCamNode::gammaCallback, this);
 
     // check for default camera info
     if (!cinfo_->isCalibrated())
