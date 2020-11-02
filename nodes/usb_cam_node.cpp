@@ -48,6 +48,10 @@
 
 namespace usb_cam {
 
+const static int ROTATE_90_CW = 0;
+const static int ROTATE_90_CCW = 1;
+const static int ROTATE_180 = 2;
+
 class UsbCamNode
 {
 public:
@@ -79,6 +83,8 @@ public:
   ros::ServiceServer service_start_, service_stop_;
   dynamic_reconfigure::Server<usb_cam::CameraParameterConfig> camera_parameter_server_;
   ros::Subscriber sub_exposure_absolute_, sub_gamma_;
+
+  int rotate_code_;
 
 
   bool service_start_cap(std_srvs::Empty::Request  &req, std_srvs::Empty::Response &res )
@@ -161,6 +167,8 @@ public:
     node_.param("gamma_default", gamma_default_, 100);
     node_.param("gamma_max", gamma_max_, 200);
     node_.param("gamma_min", gamma_min_, 50);
+
+    node_.param("rotate_code", rotate_code_, -1);
 
     // load the camera info
     node_.param("camera_frame_id", img_.header.frame_id, std::string("head_camera"));
@@ -334,10 +342,61 @@ public:
       }
     }
 
-    // publish the image
-    image_pub_.publish(*img_ptr, *ci);
+    if (rotate_code_ == ROTATE_90_CW || rotate_code_ == ROTATE_90_CCW || rotate_code_ == ROTATE_180) {
+      const int ch = sensor_msgs::image_encodings::numChannels(img_.encoding);
+      sensor_msgs::Image rotated_img_;
+      rotated_img_.header = img_.header;
+      rotated_img_.encoding = img_.encoding;
+      rotated_img_.is_bigendian = img_.is_bigendian;
+      if (rotate_code_ == ROTATE_90_CW || rotate_code_ == ROTATE_90_CCW) {
+        rotated_img_.width = img_.height;
+        rotated_img_.height = img_.width;
+        // TODO(f-fl0) update camera matrix
+      } else
+      {
+        rotated_img_.width = img_.width;
+        rotated_img_.height = img_.height;
+      }
+      rotated_img_.step = rotated_img_.width * ch;
+      rotated_img_.data.resize(rotated_img_.height * rotated_img_.step);
+      rotate(img_ptr->data.data(), rotated_img_.data.data(), img_.height, img_.width, ch, rotate_code_);
+      image_pub_.publish(rotated_img_, *ci);
+    } else {
+      image_pub_.publish(*img_ptr, *ci);
+    }
+
 
     return true;
+  }
+
+  void rotate(uint8_t *src, uint8_t *dst, const int row, const int col, const int ch, int rotate_code) {
+    // rotate 180 degrees
+    if (rotate_code == ROTATE_180) {
+      for (int i = 0; i < row; i++) {
+        for (int j = 0; j < col; j++) {
+          for (int c = 0; c < ch; c++) {
+            dst[col * ch * (row - 1 - i) + (col - 1 - j) * ch + c] = src[col * ch * i + j * ch + c];
+          }
+        }
+      }
+    } else {
+      int src_step;
+      int dst_step;
+      for (int i = 0; i < row; i++) {
+        src_step = col * ch * i;
+        for (int j = 0; j < col; j++) {
+          dst_step = row * ch * j;
+          for (int c = 0; c < ch; c++) {
+            // rotate 90 degrees CCW
+            if (rotate_code == ROTATE_90_CW)
+              dst[dst_step + (row - 1 - i) * ch + c] = src[src_step + j * ch + c];
+            // rotate 90 degrees CW
+            else if (rotate_code == ROTATE_90_CCW)
+              dst[dst_step + i * ch + c] = src[src_step + j * ch + c];
+          }
+        }
+      }
+    }
   }
 
   bool spin()
