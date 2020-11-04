@@ -61,6 +61,7 @@ public:
   // shared image message
   sensor_msgs::Image img_;
   sensor_msgs::Image img_pad_;
+  sensor_msgs::Image img_rotated_;
   image_transport::CameraPublisher image_pub_;
 
   // parameters
@@ -342,26 +343,80 @@ public:
       }
     }
 
-    if (rotate_code_ == ROTATE_90_CW || rotate_code_ == ROTATE_90_CCW || rotate_code_ == ROTATE_180) {
+    if (rotate_code_ == ROTATE_90_CW || rotate_code_ == ROTATE_90_CCW || rotate_code_ == ROTATE_180)
+    {
       const int ch = sensor_msgs::image_encodings::numChannels(img_.encoding);
-      sensor_msgs::Image rotated_img_;
-      rotated_img_.header = img_.header;
-      rotated_img_.encoding = img_.encoding;
-      rotated_img_.is_bigendian = img_.is_bigendian;
-      if (rotate_code_ == ROTATE_90_CW || rotate_code_ == ROTATE_90_CCW) {
-        rotated_img_.width = img_.height;
-        rotated_img_.height = img_.width;
-        // TODO(f-fl0) update camera matrix
-      } else
+      img_rotated_.header = img_ptr->header;
+      img_rotated_.encoding = img_ptr->encoding;
+      img_rotated_.is_bigendian = img_ptr->is_bigendian;
+      if (rotate_code_ == ROTATE_90_CW || rotate_code_ == ROTATE_90_CCW)
       {
-        rotated_img_.width = img_.width;
-        rotated_img_.height = img_.height;
+        img_rotated_.width = img_ptr->height;
+        img_rotated_.height = img_ptr->width;
+
+        // swap fx and fy
+        std::swap(ci->K[0], ci->K[4]);
+
+        if (rotate_code_ == ROTATE_90_CW)
+        {
+          // update cx and cy
+          double tmp_cx = ci->K[2];
+          ci->K[2] = ci->height - ci->K[3 + 2];
+          ci->K[3 + 2] = tmp_cx;
+
+          // update ROI
+          if (ci->roi.width != 0 && ci->roi.height != 0)
+          {
+            double tmp_x_offset = ci->roi.x_offset;
+            ci->roi.x_offset = ci->height - ci->roi.y_offset;
+            ci->roi.y_offset = tmp_x_offset;
+          }
+        }
+
+        if (rotate_code_ == ROTATE_90_CCW)
+        {
+          // update cx and cy
+          double tmp_cx = ci->K[2];
+          ci->K[2] = ci->K[3 + 2];
+          ci->K[3 + 2] = ci->width - tmp_cx;
+
+          // update ROI
+          if (ci->roi.width != 0 && ci->roi.height != 0)
+          {
+            double tmp_x_offset = ci->roi.x_offset;
+            ci->roi.x_offset = ci->roi.y_offset;
+            ci->roi.y_offset = ci->width - tmp_x_offset;
+          }
+        }
+
+        // update the canmera info width and height values
+        // as width and height have been swapped.
+        ci->width = img_rotated_.width;
+        ci->height = img_rotated_.height;
       }
-      rotated_img_.step = rotated_img_.width * ch;
-      rotated_img_.data.resize(rotated_img_.height * rotated_img_.step);
-      rotate(img_ptr->data.data(), rotated_img_.data.data(), img_.height, img_.width, ch, rotate_code_);
-      image_pub_.publish(rotated_img_, *ci);
-    } else {
+      else
+      {
+        img_rotated_.width = img_ptr->width;
+        img_rotated_.height = img_ptr->height;
+
+        // update cx and cy
+        ci->K[2] = ci->width - ci->K[2];
+        ci->K[3 + 2] = ci->height - ci->K[3 + 2];
+
+        // update ROI
+        if (ci->roi.width != 0 && ci->roi.height != 0)
+        {
+          ci->roi.x_offset = img_rotated_.width - ci->roi.x_offset;
+          ci->roi.y_offset = img_rotated_.height - ci->roi.y_offset;
+        }
+      }
+      img_rotated_.step = img_rotated_.width * ch;
+      img_rotated_.data.resize(img_rotated_.height * img_rotated_.step);
+      rotate(img_ptr->data.data(), img_rotated_.data.data(), img_ptr->height, img_ptr->width, ch, rotate_code_);
+      image_pub_.publish(img_rotated_, *ci);
+    }
+    else
+    {
       image_pub_.publish(*img_ptr, *ci);
     }
 
@@ -369,30 +424,36 @@ public:
     return true;
   }
 
-  void rotate(uint8_t *src, uint8_t *dst, const int row, const int col, const int ch, int rotate_code) {
+  void rotate(uint8_t *src, uint8_t *dst, const int row, const int col, const int ch, int rotate_code)
+  {
     // rotate 180 degrees
-    if (rotate_code == ROTATE_180) {
-      for (int i = 0; i < row; i++) {
-        for (int j = 0; j < col; j++) {
-          for (int c = 0; c < ch; c++) {
-            dst[col * ch * (row - 1 - i) + (col - 1 - j) * ch + c] = src[col * ch * i + j * ch + c];
+    if (rotate_code == ROTATE_180)
+    {
+      for (int i = 0; i < row; i++)
+      {
+        for (int j = 0; j < col; j++)
+        {
+          for (int c = 0; c < ch; c++)
+          {
+            dst[(col * (row - i) - 1 - j) * ch + c] = src[(col * i + j) * ch + c];
           }
         }
       }
-    } else {
-      int src_step;
-      int dst_step;
-      for (int i = 0; i < row; i++) {
-        src_step = col * ch * i;
-        for (int j = 0; j < col; j++) {
-          dst_step = row * ch * j;
-          for (int c = 0; c < ch; c++) {
-            // rotate 90 degrees CCW
-            if (rotate_code == ROTATE_90_CW)
-              dst[dst_step + (row - 1 - i) * ch + c] = src[src_step + j * ch + c];
+    }
+    else
+    {
+      for (int i = 0; i < row; i++)
+      {
+        for (int j = 0; j < col; j++)
+         {
+          for (int c = 0; c < ch; c++)
+          {
             // rotate 90 degrees CW
+            if (rotate_code == ROTATE_90_CW)
+              dst[(row * (j + 1) - 1 - i) * ch + c] = src[(col * i + j) * ch + c];
+            // rotate 90 degrees CCW
             else if (rotate_code == ROTATE_90_CCW)
-              dst[dst_step + i * ch + c] = src[src_step + j * ch + c];
+              dst[(row * j + i) * ch + c] = src[(col * i + j) * ch + c];
           }
         }
       }
