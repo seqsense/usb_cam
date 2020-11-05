@@ -167,8 +167,6 @@ public:
 
     std::string rotate_code_str;
     node_.param<std::string>("rotate_code", rotate_code_str, "");
-    ROS_ERROR("rotate_code: %s",rotate_code_str.c_str());
-
     if(rotate_code_str == "90CW_ROT")
     {
       rotate_code_ = ROTATE_90_CW;
