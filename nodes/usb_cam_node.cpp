@@ -84,7 +84,6 @@ public:
 
   RotateCode rotate_code_;
 
-
   bool service_start_cap(std_srvs::Empty::Request  &req, std_srvs::Empty::Response &res )
   {
     cam_.start_capturing();
