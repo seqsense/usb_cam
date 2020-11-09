@@ -181,7 +181,10 @@ public:
     }
     else
     {
-      ROS_WARN("Invalild rotate code: [%s]. No rotation will be applied.", rotate_code_str.c_str());
+      if (rotate_code_str != "")
+      {
+        ROS_WARN("Invalild rotate code: [%s]. No rotation will be applied.", rotate_code_str.c_str());
+      }
       rotate_code_ = ROTATE_NONE;
     }
 
