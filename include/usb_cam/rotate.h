@@ -62,65 +62,65 @@ void update_camera_info(sensor_msgs::CameraInfoPtr ci, const RotateCode rotate_c
       ci->roi.x_offset = ci->width - ci->roi.x_offset;
       ci->roi.y_offset = ci->height - ci->roi.y_offset;
     }
+
+    return;
   }
-  else
+
+  // swap fx and fy
+  std::swap(ci->K[0], ci->K[4]);
+  std::swap(ci->P[0], ci->P[5]);
+
+  if (rotate_code == ROTATE_90_CW)
   {
-    // swap fx and fy
-    std::swap(ci->K[0], ci->K[4]);
-    std::swap(ci->P[0], ci->P[5]);
+    // update cx and cy
+    const double tmp_kcx = ci->K[2];
+    ci->K[2] = ci->height - ci->K[3 + 2];
+    ci->K[3 + 2] = tmp_kcx;
+    const double tmp_pcx = ci->P[2];
+    ci->P[2] = ci->height - ci->P[4 + 2];
+    ci->P[4 + 2] = tmp_pcx;
 
-    if (rotate_code == ROTATE_90_CW)
-    {
-      // update cx and cy
-      const double tmp_kcx = ci->K[2];
-      ci->K[2] = ci->height - ci->K[3 + 2];
-      ci->K[3 + 2] = tmp_kcx;
-      const double tmp_pcx = ci->P[2];
-      ci->P[2] = ci->height - ci->P[4 + 2];
-      ci->P[4 + 2] = tmp_pcx;
-
-      // update ROI offset
-      if (ci->roi.width != 0 && ci->roi.height != 0)
-      {
-        const double tmp_x_offset = ci->roi.x_offset;
-        ci->roi.x_offset = ci->height - ci->roi.y_offset;
-        ci->roi.y_offset = tmp_x_offset;
-      }
-    }
-
-    if (rotate_code == ROTATE_90_CCW)
-    {
-      // update cx and cy
-      const double tmp_kcx = ci->K[2];
-      ci->K[2] = ci->K[3 + 2];
-      ci->K[3 + 2] = ci->width - tmp_kcx;
-      const double tmp_pcx = ci->P[2];
-      ci->P[2] = ci->P[4 + 2];
-      ci->P[4 + 2] = ci->width - tmp_pcx;
-
-      // update ROI offset
-      if (ci->roi.width != 0 && ci->roi.height != 0)
-      {
-        const double tmp_x_offset = ci->roi.x_offset;
-        ci->roi.x_offset = ci->roi.y_offset;
-        ci->roi.y_offset = ci->width - tmp_x_offset;
-      }
-    }
-
-    // update ROI width, height
+    // update ROI offset
     if (ci->roi.width != 0 && ci->roi.height != 0)
     {
-      const double tmp_roi_width = ci->roi.width;
-      ci->roi.width = ci->roi.height;
-      ci->roi.height = tmp_roi_width;
+      const double tmp_x_offset = ci->roi.x_offset;
+      ci->roi.x_offset = ci->height - ci->roi.y_offset;
+      ci->roi.y_offset = tmp_x_offset;
     }
-
-    // update the canmera info width and height values
-    // as width and height have been swapped.
-    const double tmp_ciw = ci->width;
-    ci->width = ci->height;
-    ci->height = tmp_ciw;
   }
+
+  if (rotate_code == ROTATE_90_CCW)
+  {
+    // update cx and cy
+    const double tmp_kcx = ci->K[2];
+    ci->K[2] = ci->K[3 + 2];
+    ci->K[3 + 2] = ci->width - tmp_kcx;
+    const double tmp_pcx = ci->P[2];
+    ci->P[2] = ci->P[4 + 2];
+    ci->P[4 + 2] = ci->width - tmp_pcx;
+
+    // update ROI offset
+    if (ci->roi.width != 0 && ci->roi.height != 0)
+    {
+      const double tmp_x_offset = ci->roi.x_offset;
+      ci->roi.x_offset = ci->roi.y_offset;
+      ci->roi.y_offset = ci->width - tmp_x_offset;
+    }
+  }
+
+  // update ROI width, height
+  if (ci->roi.width != 0 && ci->roi.height != 0)
+  {
+    const double tmp_roi_width = ci->roi.width;
+    ci->roi.width = ci->roi.height;
+    ci->roi.height = tmp_roi_width;
+  }
+
+  // update the canmera info width and height values
+  // as width and height have been swapped.
+  const double tmp_ciw = ci->width;
+  ci->width = ci->height;
+  ci->height = tmp_ciw;
 }
 
 void rotate(const uint8_t *src, uint8_t *dst, const int row, const int col, const int ch, const RotateCode rotate_code)
