@@ -37,6 +37,7 @@
 #include <ros/ros.h>
 #include <usb_cam/usb_cam.h>
 #include <usb_cam/CameraParameterConfig.h>
+#include <usb_cam/rotate.h>
 #include <image_transport/image_transport.h>
 #include <camera_info_manager/camera_info_manager.h>
 #include <dynamic_reconfigure/server.h>
@@ -57,6 +58,7 @@ public:
   // shared image message
   sensor_msgs::Image img_;
   sensor_msgs::Image img_pad_;
+  sensor_msgs::Image img_rotated_;
   image_transport::CameraPublisher image_pub_;
 
   // parameters
@@ -80,6 +82,7 @@ public:
   dynamic_reconfigure::Server<usb_cam::CameraParameterConfig> camera_parameter_server_;
   ros::Subscriber sub_exposure_absolute_, sub_gamma_;
 
+  RotateCode rotate_code_;
 
   bool service_start_cap(std_srvs::Empty::Request  &req, std_srvs::Empty::Response &res )
   {
@@ -161,6 +164,26 @@ public:
     node_.param("gamma_default", gamma_default_, 100);
     node_.param("gamma_max", gamma_max_, 200);
     node_.param("gamma_min", gamma_min_, 50);
+
+    std::string rotate_code_str;
+    node_.param<std::string>("rotate_code", rotate_code_str, "");
+    if(rotate_code_str == "90CW_ROT")
+    {
+      rotate_code_ = ROTATE_90_CW;
+    }
+    else if(rotate_code_str == "90CCW_ROT")
+    {
+      rotate_code_ = ROTATE_90_CCW;
+    }
+    else if(rotate_code_str == "180_ROT")
+    {
+      rotate_code_ = ROTATE_180;
+    }
+    else
+    {
+      ROS_WARN("Invalild rotate code: [%s]. No rotation will be applied.", rotate_code_str.c_str());
+      rotate_code_ = ROTATE_NONE;
+    }
 
     // load the camera info
     node_.param("camera_frame_id", img_.header.frame_id, std::string("head_camera"));
@@ -334,8 +357,26 @@ public:
       }
     }
 
-    // publish the image
-    image_pub_.publish(*img_ptr, *ci);
+    if (rotate_code_ != ROTATE_NONE)
+    {
+      const int ch = sensor_msgs::image_encodings::numChannels(img_.encoding);
+      img_rotated_.header = img_ptr->header;
+      img_rotated_.encoding = img_ptr->encoding;
+      img_rotated_.is_bigendian = img_ptr->is_bigendian;
+
+      update_camera_info(ci, rotate_code_);
+      img_rotated_.width = ci->width;
+      img_rotated_.height = ci->height;
+      img_rotated_.step = img_rotated_.width * ch;
+      img_rotated_.data.resize(img_rotated_.height * img_rotated_.step);
+      rotate(img_ptr->data.data(), img_rotated_.data.data(), img_ptr->height, img_ptr->width, ch, rotate_code_);
+      image_pub_.publish(img_rotated_, *ci);
+    }
+    else
+    {
+      image_pub_.publish(*img_ptr, *ci);
+    }
+
 
     return true;
   }

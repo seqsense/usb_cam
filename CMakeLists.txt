@@ -39,6 +39,8 @@ catkin_package(
 ## Build ##
 ###########
 
+set(CMAKE_CXX_STANDARD 14)
+
 include_directories(include
   ${catkin_INCLUDE_DIRS}
   ${avcodec_INCLUDE_DIRS}
@@ -63,6 +65,14 @@ target_link_libraries(${PROJECT_NAME}_node
 )
 
 add_dependencies(${PROJECT_NAME}_node ${PROJECT_NAME}_gencfg)
+
+if (CATKIN_ENABLE_TESTING)
+  catkin_add_gtest(test_rotate
+    test/test_rotate.cpp
+  )
+  target_link_libraries(test_rotate ${catkin_LIBRARIES})
+endif()
+
 
 #############
 ## Install ##
