@@ -146,7 +146,7 @@ void rotate(const uint8_t *src, uint8_t *dst, const int row, const int col, cons
       {
         for (int c = 0; c < ch; c++)
         {
-          dst[(row * j + i) * ch + c] = src[(col * i + j) * ch + c];
+          dst[(row * (col - 1 - j) + i) * ch + c] = src[(col * i + j) * ch + c];
         }
       }
     }
