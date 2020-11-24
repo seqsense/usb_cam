@@ -22,6 +22,6 @@ jobs:
       - name: Test
         run: |
           eval export ${{ matrix.env }}
-          docker run -it --rm \
+          docker run --rm \
             -v $(pwd):/src/$(basename $(pwd)):ro \
             ghcr.io/alpine-ros/ros-abuild:${ALPINE_ROS_TAG}
