@@ -41,16 +41,7 @@
 extern "C"
 {
 #include <linux/videodev2.h>
-#include <libavcodec/avcodec.h>
-#include <libswscale/swscale.h>
-#include <libavutil/mem.h>
 }
-
-// legacy reasons
-#include <libavcodec/version.h>
-#if LIBAVCODEC_VERSION_MAJOR < 55
-#define AV_CODEC_ID_MJPEG CODEC_ID_MJPEG
-#endif
 
 #include <string>
 #include <sstream>
@@ -137,14 +128,6 @@ class UsbCam {
   int fd_;
   buffer * buffers_;
   unsigned int n_buffers_;
-  AVFrame *avframe_camera_;
-  AVFrame *avframe_rgb_;
-  AVCodec *avcodec_;
-  AVDictionary *avoptions_;
-  AVCodecContext *avcodec_context_;
-  int avframe_camera_size_;
-  int avframe_rgb_size_;
-  struct SwsContext *video_sws_;
   camera_image_t *image_;
 
 };
