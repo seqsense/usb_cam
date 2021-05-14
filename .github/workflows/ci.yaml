@@ -13,7 +13,6 @@ jobs:
       fail-fast: false
       matrix:
         env:
-          - ALPINE_ROS_TAG=3.7-kinetic
           - ALPINE_ROS_TAG=3.8-melodic
           - ALPINE_ROS_TAG=3.11-noetic
     steps:
